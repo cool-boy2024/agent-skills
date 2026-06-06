@@ -12,6 +12,9 @@ Thumbs.db
 # Claude Code local (not for version control)
 .claude/settings.local.json
 
+# npx skills lockfile (auto-generated, machine-specific)
+skills-lock.json
+
 # Anything that shouldn't be in a catalog (don't accidentally commit cloned skills)
 skills/*/SKILL.md
 skills/*/references/

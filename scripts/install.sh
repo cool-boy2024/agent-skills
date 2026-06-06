@@ -1,12 +1,14 @@
 #!/bin/bash
-# install.sh - Download a skill by name from this catalog into the local agent's skills dir.
-# Usage:
-#   ./scripts/install.sh                    # list available skills
-#   ./scripts/install.sh <skill-name>       # install globally
-#   ./scripts/install.sh <skill-name> --project   # install to current project only
+# install.sh - Download a skill by name from this catalog into ~/.claude/skills/<name>/.
 #
-# After install, the skill content lives at ~/.claude/skills/<name>/ (or ./.claude/skills/<name>/ for --project).
-# Use ./scripts/clean.sh <skill-name> to remove.
+# Usage:
+#   ./scripts/install.sh                        # list available skills
+#   ./scripts/install.sh <skill-name>           # install to claude-code (default)
+#   ./scripts/install.sh <skill-name> --project # install to ./.claude/skills/<name>/ instead
+#
+# Implementation: `curl` codeload.github.com tarball + `tar -xz` + `cp` the subpath.
+# This avoids `gh repo clone` (which uses git+https://github.com and is blocked on this network)
+# AND avoids `npx skills add` (which scans 70+ candidate "agent dirs" and may wipe our catalog).
 
 set -e
 
@@ -44,25 +46,62 @@ if [ ! -f "$SOURCE_FILE" ]; then
   exit 1
 fi
 
+PROJECT_FLAG=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --project) PROJECT_FLAG="--project" ;;
+    *) echo "Unknown flag: $1"; exit 1 ;;
+  esac
+  shift
+done
+
 OWNER=$(jq -r '.source.owner' "$SOURCE_FILE")
 REPO=$(jq -r '.source.repo' "$SOURCE_FILE")
-SKILL_NAME=$(jq -r '.name' "$SOURCE_FILE")
-METHOD=$(jq -r '.install.method' "$SOURCE_FILE")
-CUSTOM_CMD=$(jq -r '.install.command' "$SOURCE_FILE")
+REF=$(jq -r '.source.ref' "$SOURCE_FILE")
+SUBPATH=$(jq -r '.source.path' "$SOURCE_FILE")
 LICENSE=$(jq -r '.source.license' "$SOURCE_FILE")
 INSTALLS=$(jq -r '.metrics.installs' "$SOURCE_FILE")
 
-echo "📦 Installing [$SKILL_NAME] from $OWNER/$REPO (license: $LICENSE, installs: $INSTALLS)"
-echo ""
-
-# npx skills add defaults to interactive + symlink; we want non-interactive + copy so the user can rm -rf cleanly.
-if [ "$METHOD" = "npx" ]; then
-  npx -y skills add "$OWNER/$REPO" --skill "$SKILL_NAME" -a '*' --copy -y "$@"
+if [ "$PROJECT_FLAG" = "--project" ]; then
+  DEST="$REPO_ROOT/.claude/skills/$NAME"
 else
-  echo "→ Custom install: $CUSTOM_CMD"
-  eval "$CUSTOM_CMD"
+  DEST="$HOME/.claude/skills/$NAME"
 fi
 
+echo "📦 Installing [$NAME] from $OWNER/$REPO (ref: $REF, subpath: $SUBPATH)"
+echo "   license: $LICENSE | installs: $INSTALLS"
+echo "   → $DEST"
 echo ""
-echo "✅ Done. Verify with: npx skills list"
-echo "   Remove with:    ./scripts/clean.sh $NAME"
+
+# Download tarball from codeload.github.com (works on networks that block github.com:443)
+TMP=$(mktemp -d)
+trap "rm -rf '$TMP'" EXIT
+
+URL="https://codeload.github.com/$OWNER/$REPO/tar.gz/$REF"
+echo "   fetching $URL ..."
+curl -sL --max-time 60 "$URL" | tar -xz -C "$TMP" 2>&1 | tail -3 || {
+  echo "❌ Failed to download $URL"
+  exit 1
+}
+
+# Find the extracted top-level dir (it's <repo>-<ref>)
+EXTRACTED=$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -1)
+if [ -z "$EXTRACTED" ]; then
+  echo "❌ Tarball extraction failed"
+  exit 1
+fi
+
+SRC="$EXTRACTED/$SUBPATH"
+if [ ! -d "$SRC" ]; then
+  echo "❌ Subpath '$SUBPATH' not found in $OWNER/$REPO at $REF"
+  exit 1
+fi
+
+mkdir -p "$DEST"
+rm -rf "$DEST"/*
+cp -R "$SRC/." "$DEST/"
+
+echo ""
+echo "✅ Installed to $DEST"
+echo "   Verify: ls $DEST"
+echo "   Remove: ./scripts/clean.sh $NAME$([ "$PROJECT_FLAG" = "--project" ] && echo " --project" || true)"
