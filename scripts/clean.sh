@@ -2,8 +2,11 @@
 # clean.sh - Remove an installed skill.
 #
 # Usage:
-#   ./scripts/clean.sh <skill-name>           # remove from ~/.claude/skills/
-#   ./scripts/clean.sh <skill-name> --project # remove from ./.claude/skills/
+#   ./scripts/clean.sh <skill-name>           # remove only if NOT pinned (default safe)
+#   ./scripts/clean.sh <skill-name> --force   # remove even if pinned
+#   ./scripts/clean.sh <skill-name> --project # remove from ./.claude/skills/ instead of ~/.claude/skills/
+#
+# To remove a pinned skill safely: ./scripts/unpin.sh <name> first, then ./scripts/clean.sh <name>.
 #
 # Belt-and-suspenders: also scans for any other straggler dirs named <skill-name> in agent skill
 # locations under the current project and $HOME, excluding our catalog metadata dir.
@@ -11,7 +14,7 @@
 set -e
 
 if [ $# -lt 1 ]; then
-  echo "Usage: $0 <skill-name> [--project]"
+  echo "Usage: $0 <skill-name> [--force] [--project]"
   echo ""
   echo "Currently installed skills:"
   for d in "$HOME/.claude/skills"/*/ "$REPO_ROOT/.claude/skills"/*/; do
@@ -22,16 +25,27 @@ fi
 
 NAME="$1"
 shift
+FORCE=""
 PROJECT_FLAG=""
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PINNED_FILE="$REPO_ROOT/pinned.txt"
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --force)   FORCE="--force" ;;
     --project) PROJECT_FLAG="--project" ;;
     *) echo "Unknown flag: $1"; exit 1 ;;
   esac
   shift
 done
+
+# Pinned-skill guard
+if [ -z "$FORCE" ] && grep -qxF "$NAME" "$PINNED_FILE" 2>/dev/null; then
+  echo "🛑 '$NAME' is PINNED. Refusing to remove."
+  echo "   To remove: ./scripts/unpin.sh $NAME  (then re-run this script)"
+  echo "   Or force:  ./scripts/clean.sh $NAME --force"
+  exit 1
+fi
 
 CATALOG_DIR="$REPO_ROOT/skills/$NAME"
 
@@ -52,15 +66,11 @@ if [ -d "$PRIMARY" ]; then
 fi
 
 # Belt-and-suspenders: any other *\*/skills/<name> under . or $HOME, excluding our catalog dir.
-# Compare via `cd && pwd` so we catch both relative and absolute path forms find may emit.
 while read -r d; do
   [ -z "$d" ] && continue
   abs=$(cd "$d" 2>/dev/null && pwd)
   [ -z "$abs" ] && continue
-  if [ "$abs" = "$CATALOG_DIR" ]; then
-    # This is our catalog metadata; skip.
-    continue
-  fi
+  if [ "$abs" = "$CATALOG_DIR" ]; then continue; fi
   rm -rf "$d"
   echo "   removed $d"
   REMOVED=$((REMOVED + 1))

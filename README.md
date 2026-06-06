@@ -9,20 +9,39 @@ This is **cool-boy2024**'s personal skill library. Two goals:
 ## Quick start
 
 ```bash
-# See what's in the catalog
+# See what's in the catalog (with pinned/installed status)
 ./scripts/install.sh              # no args → list
 
-# Install a skill globally (pulls to ~/.claude/skills/)
+# Install a skill — auto-pins (won't be removed by clean.sh)
 ./scripts/install.sh find-skills
 ./scripts/install.sh grill-me
 ./scripts/install.sh caveman
 
-# Remove when done
-./scripts/clean.sh caveman
+# Remove a skill — two-step to be safe
+./scripts/unpin.sh caveman        # 1. remove from pinned list
+./scripts/clean.sh caveman        # 2. actually delete the files
+
+# Or one-step force-remove (bypasses pin)
+./scripts/clean.sh caveman --force
+
+# Install without pinning (rare; for testing)
+./scripts/install.sh caveman --no-pin
 
 # Daily discovery routine (cron-friendly)
 ./my-skills/auto-learner/scripts/daily_learn.sh "rust async runtime"
 ```
+
+## Pinned skills (default safety net)
+
+Anything you install is **auto-pinned** — meaning `./scripts/clean.sh <name>` will refuse to delete it. This prevents accidental removal.
+
+The reasoning: you said *"future me, when I want to use a skill, I'll go to our repo to find it. Whether to delete is mine to decide."* Pinning is the technical realization of that — installed skills stick around until you explicitly unpin them.
+
+| State | Effect of `clean.sh <name>` |
+|---|---|
+| Installed, pinned (default) | **Refuses** (exit 1). Use `unpin.sh` first, or pass `--force`. |
+| Installed, not pinned (--no-pin) | Removes it |
+| Not installed | No-op |
 
 ## Layout
 
@@ -30,6 +49,7 @@ This is **cool-boy2024**'s personal skill library. Two goals:
 agent-skills/
 ├── README.md                       ← you are here
 ├── catalog.md                      ← curated index of all skills
+├── pinned.txt                      ← skills protected from accidental deletion
 ├── skills/                         ← third-party skills (metadata only)
 │   ├── find-skills/.source.json    ← owner/repo/path/install_cmd
 │   ├── skill-creator/.source.json
@@ -45,8 +65,10 @@ agent-skills/
 ├── catalog/                        ← append-only discovery queue
 │   └── candidates.md
 ├── scripts/
-│   ├── install.sh                  ← on-demand download
-│   └── clean.sh                    ← remove
+│   ├── install.sh                  ← on-demand download + auto-pin
+│   ├── clean.sh                    ← remove (refuses if pinned, --force to override)
+│   ├── pin.sh                      ← manually pin
+│   └── unpin.sh                    ← unpin (then clean will work)
 └── docs/
     └── how-to-add-a-skill.md
 ```
