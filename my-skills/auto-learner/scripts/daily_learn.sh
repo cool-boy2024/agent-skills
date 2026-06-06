@@ -109,9 +109,9 @@ while IFS=$'\t' read -r name repo path _stars_unused; do
     continue
   fi
 
-  # Gate 2: must have ≥ 10 stars
-  if [ "${STARS:-0}" -lt 10 ]; then
-    log "  skip $repo: low stars (★$STARS)"
+  # Gate 2: must have ≥ 50,000 stars (user's curator threshold; see feedback_discovery_threshold.md)
+  if [ "${STARS:-0}" -lt 50000 ]; then
+    log "  skip $repo: below 50k star threshold (★$STARS)"
     continue
   fi
 

@@ -3,3 +3,5 @@
 # `install.sh` auto-appends a new line when a skill is installed.
 # Use `./scripts/unpin.sh <name>` to remove a name from this file (then `./scripts/clean.sh <name>` will actually delete it).
 grill-me
+find-skills
+skill-creator

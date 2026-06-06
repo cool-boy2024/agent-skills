@@ -65,7 +65,7 @@ A candidate skill is added to `catalog/candidates.md` only if it passes **all** 
 |---|---|---|
 | Active maintenance | Last commit ≤ 6 months | Stale skills lie about working behavior |
 | Single responsibility | Fits in one SKILL.md | Multi-purpose skills are hard to evaluate |
-| Adoption signal | ≥50K installs **or** ≥1K GH stars | Crowdsourced validation |
+| Adoption signal | ≥50,000 GitHub stars | Single bar — user-set curator threshold (see `feedback_discovery_threshold.md`) |
 | **OR** personal fit | Solves a problem I (the user) hit ≥2 times | Personal track record beats stars |
 | No license trap | License is MIT / Apache-2.0 / BSD / public | Avoid GPL/AGPL for personal use |
 | Real content | Has SKILL.md, not just a stub | Empty wrapper = no value |
