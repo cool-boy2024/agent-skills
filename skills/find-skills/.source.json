@@ -1,0 +1,25 @@
+{
+  "name": "find-skills",
+  "category": "discovery",
+  "description": "Search the global agent skills directory. Use when you need to find, evaluate, or install a new skill from the open ecosystem (skills.sh, GitHub, npm).",
+  "source": {
+    "owner": "vercel-labs",
+    "repo": "skills",
+    "ref": "main",
+    "path": "skills/find-skills",
+    "license": "MIT"
+  },
+  "metrics": {
+    "installs": "1.9M",
+    "skills_sh_rank": 1
+  },
+  "install": {
+    "method": "npx",
+    "command": "npx skills add vercel-labs/skills"
+  },
+  "use_when": [
+    "User asks for a skill that does X",
+    "Discovering new skills in a domain",
+    "Comparing multiple skills for the same task"
+  ]
+}

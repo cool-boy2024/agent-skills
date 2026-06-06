@@ -1,0 +1,25 @@
+{
+  "name": "skill-creator",
+  "category": "meta",
+  "description": "Create new skills following Anthropic's official spec (SKILL.md format, progressive disclosure, scripts/resources structure). Use when building a new skill from scratch or refactoring an existing one.",
+  "source": {
+    "owner": "anthropics",
+    "repo": "skills",
+    "ref": "main",
+    "path": "skills/skill-creator",
+    "license": "Apache-2.0"
+  },
+  "metrics": {
+    "installs": "254K",
+    "skills_sh_rank": 27
+  },
+  "install": {
+    "method": "npx",
+    "command": "npx skills add anthropics/skills"
+  },
+  "use_when": [
+    "Designing a new skill",
+    "Auditing an existing skill for quality",
+    "Converting ad-hoc instructions into a reusable skill"
+  ]
+}

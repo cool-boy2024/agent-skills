@@ -1,0 +1,25 @@
+{
+  "name": "brainstorming",
+  "category": "meta",
+  "description": "Explore a problem space before jumping to solutions. Surfaces hidden requirements, alternative framings, and risks. From the obra/superpowers project.",
+  "source": {
+    "owner": "obra",
+    "repo": "superpowers",
+    "ref": "main",
+    "path": "skills/brainstorming",
+    "license": "MIT"
+  },
+  "metrics": {
+    "installs": "204K",
+    "skills_sh_rank": 37
+  },
+  "install": {
+    "method": "npx",
+    "command": "npx skills add obra/superpowers"
+  },
+  "use_when": [
+    "Starting a new feature/project",
+    "User has only a vague idea",
+    "Need to surface constraints and requirements"
+  ]
+}

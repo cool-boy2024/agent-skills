@@ -1,0 +1,25 @@
+{
+  "name": "grill-me",
+  "category": "evaluation",
+  "description": "Stress-test a decision, plan, or design by relentlessly asking hard questions. Use when the user is about to commit to something risky, or when a design feels too clean.",
+  "source": {
+    "owner": "mattpocock",
+    "repo": "skills",
+    "ref": "main",
+    "path": "skills/productivity/grill-me",
+    "license": "MIT"
+  },
+  "metrics": {
+    "installs": "267K",
+    "skills_sh_rank": 26
+  },
+  "install": {
+    "method": "npx",
+    "command": "npx skills add mattpocock/skills"
+  },
+  "use_when": [
+    "About to ship a high-stakes change",
+    "Pre-commit sanity check",
+    "Evaluating whether to add a new dependency/skill"
+  ]
+}

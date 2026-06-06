@@ -1,0 +1,25 @@
+{
+  "name": "caveman",
+  "category": "efficiency",
+  "description": "Make the agent output ultra-compact caveman-speak. Cuts ~75% of output tokens while keeping full technical accuracy. Good for tight token budgets or when you want signal density over verbosity.",
+  "source": {
+    "owner": "juliusbrussee",
+    "repo": "caveman",
+    "ref": "main",
+    "path": "skills/caveman",
+    "license": "MIT"
+  },
+  "metrics": {
+    "installs": "216K",
+    "skills_sh_rank": 31
+  },
+  "install": {
+    "method": "npx",
+    "command": "npx skills add juliusbrussee/caveman"
+  },
+  "use_when": [
+    "Token budget is tight",
+    "Output is too verbose",
+    "Want quick, terse responses"
+  ]
+}

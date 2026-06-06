@@ -1,0 +1,23 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude Code local (not for version control)
+.claude/settings.local.json
+
+# Anything that shouldn't be in a catalog (don't accidentally commit cloned skills)
+skills/*/SKILL.md
+skills/*/references/
+skills/*/scripts/
+skills/*/assets/
+
+# My own skill subdirs ARE committed — only ignore the cloned-skill leftovers above.
+!my-skills/**/*.md
+!my-skills/**/*.sh
