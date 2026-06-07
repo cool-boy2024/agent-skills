@@ -1,0 +1,15 @@
+# 缓存数据 — 由脚本从 akshare 重新拉，删了重跑即可
+data/
+
+# 回测图表 — 输出可重新生成
+output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# venv（如果将来脚本搬到 repo 内）
+.venv/
+venv/
+.env
