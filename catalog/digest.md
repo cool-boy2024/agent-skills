@@ -27,12 +27,12 @@
 ### [freqtrade](https://github.com/freqtrade/freqtrade) — ⭐ 51.2k 🆕
 - **类别**: framework (crypto 量化交易 bot)
 - **一句话**: 开源 Python crypto 量化交易 bot — backtest / ML 优化 / Telegram & webUI 控制 / 100+ 交易所
-- **为什么对你**: 🟢 **新晋 50k+ 硬指标 (你 50k 阈值) + 你的 web3 兴趣双重契合**。**支持 Hyperliquid (DEX)** — 这意味着你熟悉的 DeFi/链上交易直接可量化。Freqtrade 是 crypto 量化的事实标准，FreqAI 模块能做 ML 驱动的策略
-- **潜在坑**: ⚠️ **Freqtrade README 第一句声明 "for educational purposes only, USE AT YOUR OWN RISK"** — 跟 web-access 一个性质,先 dry-run (paper trade) 再实盘。**51k stars 不是低风险信号**,加密资产波动巨大,小心爆仓
-- **建议**: 🟢装（tier=install；50k+ install tier 标准动作,但**装完先配 Binance testnet 跑 1-2 周 paper trade**,确认策略逻辑、订单执行、滑点假设都对了再上主网）
+- **为什么对你**: 🟢 **新晋 50k+ 硬指标 + 你的 web3 兴趣双重契合**。**支持 Hyperliquid (DEX，去中心化交易所)** — 你熟悉的 DeFi/链上交易直接可量化。FreqAI 模块能做机器学习驱动的策略
+- **潜在坑**: ⚠️ **Freqtrade 自己的 README 第一句就声明 "for educational purposes only, USE AT YOUR OWN RISK"**。**51k stars 不代表低风险** — 加密资产 7×24 剧烈波动，策略失灵可能瞬间爆仓；**实盘前需完成 Python 环境 + 交易所 API key 配置 + dry-run 模式验证，光装上不算会跑**
+- **建议**: 🟢装（tier=install；**装完先配 Binance testnet 跑 1-2 周 paper trade**，确认策略逻辑、订单执行、滑点假设都对了再上主网）
 - **Tier**: install
 - **Added**: 2026-06-08
-- **Source**: 今晚量化研究手动发现（cron 还没轮到这个 50k+ 突破,提前入列）
+- **运维门槛**: 需常驻运行（VPS 或本机 7×24 开机），不是装完即用的 CLI 工具
 
 ### [superpowers](https://github.com/obra/superpowers) — ⭐ 220k 🔥
 - **类别**: framework (14 个 sub-skills)
