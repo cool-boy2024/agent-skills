@@ -6,3 +6,5 @@ grill-me
 find-skills
 skill-creator
 web-access
+ricequant
+rqdata-python

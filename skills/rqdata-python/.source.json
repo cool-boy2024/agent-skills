@@ -1,0 +1,31 @@
+{
+  "name": "rqdata-python",
+  "category": "capability",
+  "description": "RQData Python 数据 API 的本地缓存查询工具。覆盖 A 股、港股、期货、期权、指数、基金、可转债等市场数据。无需联网，但需先安装 rqsdk 并配置 license（付费产品）。",
+  "source": {
+    "owner": "ricequant",
+    "repo": "ricequant-skills",
+    "ref": "main",
+    "path": "skills/basic/rqdata-python",
+    "license": "Proprietary (米筐付费产品)"
+  },
+  "metrics": {
+    "installs": "?",
+    "skills_sh_rank": null,
+    "github_stars": 26
+  },
+  "install": {
+    "method": "codeload",
+    "command": "curl codeload tarball + extract skills/basic/rqdata-python"
+  },
+  "use_when": [
+    "需要用 Python 直接调 RQData 拉金融数据",
+    "已有米筐 RQData 付费 license",
+    "需要离线查询 RQData API 文档（本地缓存）"
+  ],
+  "notes": "⚠️ 使用前置：先 pip install rqsdk + 配置 license。skill 启动时会跑 init_skill.py 验证 license，没 license 会自动终止。GitHub 仓库 ricequant/ricequant-skills 与 ricequant skill 同源。",
+  "prerequisites": [
+    "pip install rqsdk",
+    "配置 RQData license（向米筐购买）"
+  ]
+}

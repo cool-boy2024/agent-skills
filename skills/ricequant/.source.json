@@ -1,0 +1,51 @@
+{
+  "name": "ricequant",
+  "category": "capability",
+  "description": "Ricequant（米筐）量化平台文档阅读和 API 查询工具。覆盖 RQAlphaPlus 回测框架、RQData 数据 API、RQFactor 因子计算、RQOptimizer 优化器、RQPAttr 归因分析等组件的在线文档查询。不需米筐 license，但 research 类功能需 rqdata CLI。",
+  "source": {
+    "owner": "ricequant",
+    "repo": "ricequant-skills",
+    "ref": "main",
+    "path": "skills/basic/ricequant",
+    "license": "Proprietary (see米筐官方 LICENSE 条款)"
+  },
+  "metrics": {
+    "installs": "?",
+    "skills_sh_rank": null,
+    "github_stars": 26
+  },
+  "install": {
+    "method": "codeload",
+    "command": "curl codeload tarball + extract skills/basic/ricequant"
+  },
+  "use_when": [
+    "需要查询 RQAlphaPlus / RQData / RQFactor / RQOptimizer / RQPAttr 等米筐组件的 API 用法",
+    "需要参考米筐平台的官方文档结构",
+    "做 A 股 / 港股 / 期货 / 期权量化研究时参考数据接入方式"
+  ],
+  "notes": "SKILL.md 声明 Proprietary。米筐母公司 RQData 需付费 license。GitHub 仓库 ricequant/ricequant-skills 共 11 个 skills（2 basic + 9 research），本次只装 basic 之一。9 个 research 类（idea-generation / earnings-analysis 等）需先 npm install -g @ricequant2026/rqdata-cli + 配置 license。",
+  "sister_skills_in_repo": {
+    "rqdata-python": {
+      "name": "rqdata-python",
+      "path_in_repo": "skills/basic/rqdata-python",
+      "needs_license": true,
+      "purpose": "RQData Python API 本地缓存查询（不需联网，但需 rqsdk + license）"
+    },
+    "research": {
+      "name": "research/* (9 skills)",
+      "path_in_repo": "skills/research/*",
+      "needs_license": true,
+      "skills": [
+        "catalyst-calendar",
+        "earnings-analysis",
+        "earnings-preview",
+        "idea-generation",
+        "initiating-coverage",
+        "morning-note",
+        "report-renderer",
+        "sector-overview",
+        "thesis-tracker"
+      ]
+    }
+  }
+}
