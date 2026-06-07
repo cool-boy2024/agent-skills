@@ -1,0 +1,28 @@
+{
+  "name": "web-access",
+  "category": "capability",
+  "description": "给 Claude Code 装上完整联网能力：CDP 浏览器调度、网页抓取、登录后操作、并行分治。所有联网操作（搜索、抓页、社交媒体、动态渲染）都走此 skill。",
+  "source": {
+    "owner": "eze-is",
+    "repo": "web-access",
+    "ref": "main",
+    "path": "",
+    "license": "MIT"
+  },
+  "metrics": {
+    "installs": "?",
+    "skills_sh_rank": null,
+    "github_stars": 7265
+  },
+  "install": {
+    "method": "codeload",
+    "command": "curl codeload tarball + extract"
+  },
+  "use_when": [
+    "需要 Claude 联网（搜索、抓页、登录态访问）",
+    "Catalog 系统需要查 GitHub API 但 Claude 自身没网",
+    "访问需要浏览器环境的网站（小红书、微博、X 等）",
+    "处理动态渲染页面"
+  ],
+  "notes": "README 警告'部分站点对浏览器自动化操作检测严格，存在账号封禁风险'。前置 Node.js 22+。"
+}

@@ -24,15 +24,6 @@
 
 ## 📥 待你决定 (awaiting your call)
 
-### [web-access](https://github.com/eze-is/web-access) — ⭐ 7.3k
-- **类别**: skill
-- **一句话**: 给 Claude Code 装上完整联网能力（CDP 浏览器 + 抓取 + 登录后操作）
-- **为什么对你**: 你的很多 coding 工作（catalog 系统、GitHub API 查询）都受限于 Claude 的"不能联网"。这个 skill 直接补这块。对**编程**兴趣中上
-- **潜在坑**: README 警告"部分站点对浏览器自动化操作检测严格，存在账号封禁风险" —— 用之前心理有数
-- **建议**: 🔖收藏（tier=read，不会自动 install）
-- **Tier**: read
-- **Added**: 2026-06-07
-
 ### [prompt-master](https://github.com/nidhinjs/prompt-master) — ⭐ 9k
 - **类别**: skill
 - **一句话**: 为任意 AI 工具生成"零 token 浪费"的高质量 prompt
@@ -42,11 +33,25 @@
 - **Tier**: read
 - **Added**: 2026-06-07
 
+### [dev-browser](https://github.com/SawyerHood/dev-browser) — ⭐ 6.2k
+- **类别**: skill
+- **一句话**: Claude 浏览器自动化，persistent page state 跨多次调用保留
+- **为什么对你**: 跟 web-access **直接竞品**。星略少（6.2k vs 7.3k），但 npm 包形式分发 + 本地 daemon 维护状态，可能体验更顺。**作 web-access 的备胎留着**——半年后哪个还活着用哪个
+- **潜在坑**: 2 days ago 极活跃（在维护），但 TS 生态变动快；需要全局 `npm install -g dev-browser` 再 `dev-browser install`，比 web-access 多一步
+- **建议**: 🔖收藏（tier=read；你说"经常用"web-access，留个备胎）
+- **Tier**: read
+- **Added**: 2026-06-07
+
 ## 📦 已装 (installed / kept)
 
-<!-- Entries that earned a slot. For skills: install.sh ran + auto-pinned. For repos: bookmarked, no install. -->
-
-_(empty — say "装 X" to promote from 待你决定)_
+### [web-access](https://github.com/eze-is/web-access) — ⭐ 7.3k
+- **类别**: skill
+- **一句话**: 给 Claude Code 联网能力（CDP 浏览器 + 抓取 + 登录后操作）
+- **为什么对你**: 补 Claude Code 的联网短板
+- **建议**: 🟢已装
+- **Tier**: install
+- **Installed**: 2026-06-07
+- **Use when**: 任何需要 Claude 联网的活（搜索、抓页、查 GitHub、登录后操作）
 
 ## 🚫 跳过 (passed on)
 

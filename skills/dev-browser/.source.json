@@ -1,0 +1,27 @@
+{
+  "name": "dev-browser",
+  "category": "capability",
+  "description": "Claude skill for browser automation with persistent page state. Navigate, fill forms, take screenshots, scrape data, test web apps. Distributed as npm package `dev-browser`.",
+  "source": {
+    "owner": "SawyerHood",
+    "repo": "dev-browser",
+    "ref": "main",
+    "path": "skills/dev-browser",
+    "license": "MIT"
+  },
+  "metrics": {
+    "installs": "?",
+    "skills_sh_rank": null,
+    "github_stars": 6223
+  },
+  "install": {
+    "method": "npm",
+    "command": "npm install -g dev-browser && dev-browser install"
+  },
+  "use_when": [
+    "Claude 需要浏览器自动化（web-access 的备胎）",
+    "Persistent page state 在多次 Claude 调用间保留",
+    "需要 form fill / screenshot / 数据抓取"
+  ],
+  "notes": "TypeScript 实现，2 days ago pushed（极活跃）。带本地 daemon 维护浏览器状态。跟 web-access 同样的活儿，星略少（6.2k vs 7.3k），作为备胎保留。"
+}

@@ -45,6 +45,12 @@ The 50k+ star threshold is **single bar, no second tier** (see `feedback_discove
 |---|---|---|---|
 | **caveman** | juliusbrussee/caveman | 216K | Cut 75% of output tokens. Useful when budget is tight. |
 
+### 🌐 Capability — give Claude real powers
+| Skill | Source | Stars | Why it's here |
+|---|---|---|---|
+| **web-access** | eze-is/web-access | 7.3k | Lets Claude Code actually go online (CDP browser + scraping + logged-in ops). Fills the "no internet" gap. |
+| **dev-browser** | SawyerHood/dev-browser | 6.2k | Backup for web-access — same purpose, npm-distributed, persistent page state. Bookmarked, not installed. |
+
 ### 🤖 Auto-scout — pipeline orchestration
 | Skill | Source | Purpose |
 |---|---|---|
