@@ -31,15 +31,46 @@ Two bash scripts (`scripts/daily_learn.sh` and `scripts/full_scan.sh`) run on cr
 
 1. **Read `catalog/candidates.md`** — see what's pending in the raw queue.
 2. **Read `catalog/digest.md`** — see what's already curated (avoid duplicates).
-3. **For each new raw candidate**:
+3. **Run `find-url` scan** (new, 2026-06-07) — discover what the user has been browsing on GitHub lately. This is **user-specific signal** that complements the popularity-based cron. See "find-url integration" below.
+4. **For each new raw candidate** (from both cron and find-url):
    - Check it still meets the 50k+ star gate (it's a moving target — stars change).
-   - Filter against `user_interests_profile.md` (programming / stocks-crypto-DeFi-finance-quant / English).
+   - Filter against `user_interests_profile.md` (programming / **web3 (active focus)** / stocks-crypto-DeFi-finance-quant / English).
    - Write a structured card (template below) into the "待你决定" section of `digest.md`.
    - Drop raw entry from the "pending" awareness (it's now represented in digest).
-4. **Archive check**: any entry in digest.md with `**Added**: YYYY-MM-DD` older than 90 days → move to `catalog/digest-archive.md` with a `**[archived YYYY-MM-DD]**` prefix.
-5. **Commit + push** with a clear message: `chore: digest update — N new, M archived`.
+5. **Archive check**: any entry in digest.md with `**Added**: YYYY-MM-DD` older than 90 days → move to `catalog/digest-archive.md` with a `**[archived YYYY-MM-DD]**` prefix.
+6. **Commit + push** with a clear message: `chore: digest update — N new, M archived`.
 
-If candidates.md is empty and digest.md is current, **say nothing** about it. The whole point is to be invisible when there's nothing to do.
+If candidates.md is empty, find-url returns nothing, and digest.md is current, **say nothing** about it. The whole point is to be invisible when there's nothing to do.
+
+## find-url integration (user-specific discovery, 2026-06-07)
+
+The cron scripts find "what's popular on GitHub". The `find-url` tool finds **what YOU have been browsing on GitHub**. Both are useful — popular = quality signal, your-browsing = relevance signal.
+
+**What it is**: `web-access` (already installed, auto-pinned) ships a `scripts/find-url.mjs` that reads the user's local Chrome/Edge bookmarks and browsing history. Returns matching URLs without needing the browser to be running.
+
+**How to use it in this skill**:
+
+```bash
+# One or more of these queries — adjust based on what makes sense
+node ~/.claude/skills/web-access/scripts/find-url.mjs github --since 7d --only history --limit 30
+node ~/.claude/skills/web-access/scripts/find-url.mjs agent --since 7d --only history --limit 10
+node ~/.claude/skills/web-access/scripts/find-url.mjs web3 defi --since 14d --only history --limit 10
+node ~/.claude/skills/web-access/scripts/find-url.mjs claude --since 7d --only history --limit 10
+```
+
+**What to do with the output**:
+- Extract `github.com/<owner>/<repo>` URLs (ignore non-GitHub URLs)
+- For each, deduplicate against what's already in `candidates.md` and `digest.md`
+- Fetch repo metadata (`gh api repos/<owner>/<repo>`) for any new ones
+- Apply the same 5k/50k gates
+- Apply the interest profile filter
+- Add survivors to `candidates.md` with a `source=find-url` tag
+- Then process them in step 4 like normal cron-sourced candidates
+
+**Caveats**:
+- This reads user's local browser data. Treat the output as private — never log or share URLs.
+- Browser history is noisy (lots of casual browsing). The interest-profile filter is what makes it useful.
+- Don't over-poll (once per session is enough; the `find-url` is fast).
 
 ## Structured card template
 

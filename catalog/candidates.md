@@ -12,3 +12,4 @@
 
 | 2026-06-07 | prompt-master | nidhinjs/prompt-master | ? | 35d (★8957) | topic=broad | full_scan | read |
 | 2026-06-07 | web-access | eze-is/web-access | ? | 22d (★7265) | topic=broad | full_scan | read |
+| 2026-06-07 | superpowers | obra/superpowers | ? | 4d (★220079) | topic=github | find-url | install |

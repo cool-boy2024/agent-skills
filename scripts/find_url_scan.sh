@@ -179,4 +179,7 @@ for kw in "github" "claude" "agent" "web3" "defi" "trading" "skill" "typescript"
   extract_and_process "$kw"
 done
 
-log "=== done. $NEW_COUNT new candidate(s) added by find_url_scan. ==="
+# Count rows actually added in this run (find_url_scan rows with today's date)
+# Works around the subshell issue with $NEW_COUNT — just count the result.
+ADDED_TODAY=$(grep -c "| $DATE | .* | find-url |" "$CANDIDATES_FILE" 2>/dev/null || echo 0)
+log "=== done. $ADDED_TODAY new candidate(s) added by find_url_scan. ==="

@@ -24,6 +24,15 @@
 
 ## 📥 待你决定 (awaiting your call)
 
+### [superpowers](https://github.com/obra/superpowers) — ⭐ 220k 🔥
+- **类别**: framework (14 个 sub-skills)
+- **一句话**: 完整 agentic skills 框架 + 软件开发方法论。**就是今晚给我看的那个 219k 那个**
+- **为什么对你**: 你**已经装了 `brainstorming`（1/14）**——这同一仓库。装 superpowers = 一次拿全剩下 13 个方法论 skill：`dispatching-parallel-agents` / `executing-plans` / `systematic-debugging` / `test-driven-development` / `verification-before-completion` / `writing-plans` / `writing-skills` 等。对**编程**（任何 dev 工作，包括你的 web3 智能合约）价值高
+- **潜在坑**: 14 个 skill 一次装会**显著改变 Claude 的行为**（这套方法论强调"先 brainstorm / 先 TDD / verification before completion"等）。你"另一个我"现在很自由，**装 superpowers 会引入一套 OS**。要装就得接受"它会反过来管 Claude 的工作流"
+- **建议**: 🟢装（tier=install；你 50k+ 硬指标合格，框架 220k star 是真大牌；但**装前先读 README 知道这 14 个分别干什么**——决定权在你）
+- **Tier**: install
+- **Added**: 2026-06-07
+
 ### [prompt-master](https://github.com/nidhinjs/prompt-master) — ⭐ 9k
 - **类别**: skill
 - **一句话**: 为任意 AI 工具生成"零 token 浪费"的高质量 prompt
