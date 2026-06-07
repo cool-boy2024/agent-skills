@@ -51,7 +51,8 @@ For each entry, use this exact format. Don't deviate — the format *is* the con
 - **一句话**: 干什么的 (≤ 30 字)
 - **为什么对你**: 对照兴趣画像的具体用法
 - **潜在坑**: 1 个最值得提前知道的问题 (或 "无")
-- **建议**: 🟢装 | 🟡看看 | 🔴跳过
+- **建议**: 🟢装 | 🟡看看 | 🔖收藏 | 🔴跳过
+- **Tier**: install (≥ 50k) | read (5k–50k)
 - **Added**: YYYY-MM-DD
 ```
 
@@ -87,10 +88,13 @@ When the user uses natural language:
 
 ## Hard rules — read these before doing anything
 
-- **Never lower the 50k+ threshold.** See `feedback_discovery_threshold.md` in memory. If a candidate has < 50k stars, drop it. Do NOT add it to digest under any framing ("but it's relevant to you" is not an override).
+- **The 50k+ threshold is for "install" tier only.** See `feedback_discovery_threshold.md` in memory. The 5k–50k "read" tier was added (with user's approval) as a separate path for awareness, not for install. Don't conflate them.
+- **Tier mapping in digest.md**:
+  - tier=install → 🟢装 (or 🟡看看 if quality is borderline)
+  - tier=read → 🔖收藏 (always; never 🟢装 — these don't have the install threshold)
 - **Never auto-install without user confirmation.** Even if a candidate has 🟢 recommendation. Always confirm.
 - **The user retains final say.** If they say "不要" on something I rated 🟢, fold that into the "I was wrong about this one" model and don't recommend similar again.
-- **Don't pad digest.md.** Sparse is fine. 30-entry hard limit.
+- **Don't pad digest.md.** Sparse is fine. 30-entry hard limit (across all 3 sections combined).
 - **Commit + push after every update.** This is the user's durable record.
 
 ## File map (what lives where)

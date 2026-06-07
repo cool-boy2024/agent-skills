@@ -1,15 +1,17 @@
 #!/bin/bash
 # full_scan.sh - Quarterly full scan of all SKILL.md-bearing repos.
+# Two-tier output (decided 2026-06-06 in /grill-me session):
+#   - >= 50,000 stars  -> tier=install  (suggested action: 装)
+#   - >=  5,000 stars  -> tier=read     (suggested action: 🔖收藏 / 看)
+#   - <   5,000 stars  -> dropped
+#
 # Differs from daily_learn.sh:
 #   - No topic filter (broader sweep)
 #   - No time filter (catches old-but-still-great projects the daily cron misses)
-#   - Each appended row tagged "source=full_scan" for traceability
+#   - Each appended row tagged "source=full_scan" + tier for traceability
+#   - LOWER floor (5k instead of 50k) so the read-only tier populates
 #
 # Cron quarterly: 0 9 1 1,4,7,10 * (Jan/Apr/Jul/Oct 1st, 9am)
-#
-# Why this exists: the daily cron uses a topic keyword to keep the daily catch small.
-# That means projects whose SKILL.md doesn't contain the topic word never get seen.
-# Quarterly full scan is the safety net for "I missed something great".
 
 set -e
 
@@ -98,9 +100,19 @@ while IFS=$'\t' read -r name repo path _stars_unused; do
     continue
   fi
 
-  if [ "${STARS:-0}" -lt 50000 ]; then
-    log "  skip $repo: below 50k star threshold (★$STARS)"
+  # Two-tier gate (user's curator design; see feedback_discovery_threshold.md):
+  #   < 5k   -> drop (well below the floor, no curator value)
+  #   5k-50k -> keep as tier=read (🔖收藏 / 看)
+  #   >= 50k -> keep as tier=install (装)
+  if [ "${STARS:-0}" -lt 5000 ]; then
+    log "  skip $repo: below 5k star floor (★$STARS)"
     continue
+  fi
+
+  if [ "${STARS:-0}" -ge 50000 ]; then
+    TIER="install"
+  else
+    TIER="read"
   fi
 
   AGE_DAYS="?"
@@ -115,8 +127,8 @@ while IFS=$'\t' read -r name repo path _stars_unused; do
     continue
   fi
 
-  ROW="| $DATE | $name | $repo | ? | ${AGE_DAYS}d (★${STARS}) | topic=broad | full_scan |"
-  log "  + $repo (★$STARS, last push ${AGE_DAYS}d ago)"
+  ROW="| $DATE | $name | $repo | ? | ${AGE_DAYS}d (★${STARS}) | topic=broad | full_scan | $TIER |"
+  log "  + $repo (★$STARS, last push ${AGE_DAYS}d ago, tier=$TIER)"
 
   if [ -z "$DRY_RUN" ]; then
     echo "$ROW" >> "$CANDIDATES_FILE"
