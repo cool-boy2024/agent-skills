@@ -241,7 +241,38 @@ def run_backtest(df: pd.DataFrame) -> None:
     print(f"\n✓ equity curve + trades chart → {out}")
 
 
-if __name__ == "__main__":
+def _parse_args():
+    """CLI 参数: 不传则用脚本顶部常量默认值, 向后兼容。
+    例子: python ma_cross_yyt.py --symbol 600519 --start 20180101 --end 20260605
+    """
+    import argparse
+    p = argparse.ArgumentParser(
+        description="A 股 SMA 5/20 金叉死叉回测 (backtesting.py)",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    p.add_argument("--symbol", default=SYMBOL, help="A 股代码 (e.g. 002183, 600519, 300750)")
+    p.add_argument("--start", default=START, help="起始日期 YYYYMMDD")
+    p.add_argument("--end", default=END, help="结束日期 YYYYMMDD")
+    p.add_argument("--cash", type=float, default=100_000, help="初始资金 (CNY)")
+    p.add_argument("--spread", type=float, default=SPREAD, help="bid-ask 价差 (滑点), 0.001=10bp")
+    p.add_argument("--adjust", default=ADJUST, choices=["qfq", "hfq", "none"],
+                   help="复权方式: qfq 前复权 / hfq 后复权 / none 不复权")
+    p.add_argument("--skip-st-check", action="store_true",
+                   help="跳过 ST/*ST 校验 (跑 ST 标的 + 已手动设 limit_pct=0.05 时用)")
+    p.add_argument("--limit-pct", type=float, default=0.10,
+                   help="涨跌停幅度: 主板 0.10, 创业板/科创板 0.20, ST 0.05")
+    return p.parse_args()
+
+
+def main():
+    args = _parse_args()
+    # CLI 参数覆盖模块常量 (用于本次回测)
+    global SYMBOL, START, END, CACHE, ADJUST
+    SYMBOL, START, END = args.symbol, args.start, args.end
+    CACHE = DATA_DIR / f"{SYMBOL}.csv"  # 不同股票独立 cache
+    ADJUST = None if args.adjust == "none" else args.adjust
+    SmaCross.limit_pct = args.limit_pct
+
     try:
         df = fetch_data()
     except Exception as e:
@@ -251,9 +282,38 @@ if __name__ == "__main__":
         print(f"   Cache 在: {CACHE}。删掉重试。", file=sys.stderr)
         sys.exit(1)
 
+    if args.skip_st_check:
+        # 把 _check_st_status 替换成 no-op, 跳过 ST 校验
+        global _check_st_status
+        _check_st_status = lambda symbol: None  # type: ignore
+
     print(f"\n=== data summary: {len(df)} trading days, "
           f"{df.index.min().date()} → {df.index.max().date()} ===")
     print(f"   price range: {df['Close'].min():.2f} ~ {df['Close'].max():.2f}")
     print(f"   latest close: {df['Close'].iloc[-1]:.2f}")
+    print(f"   symbol={SYMBOL} adjust={ADJUST} spread={args.spread} limit_pct={args.limit_pct}")
 
-    run_backtest(df)
+    run_backtest(df, cash=args.cash, spread=args.spread)
+
+
+def run_backtest(df: pd.DataFrame, cash: float = 100_000, spread: float = SPREAD) -> None:
+    """跑回测 + 出图。cash / spread 走 CLI 参数。"""
+    bt = Backtest(
+        df,
+        SmaCross,
+        cash=cash,
+        commission=a_share_commission,  # A 股非对称：买 0.025% / 卖 0.076%
+        spread=spread,                  # A 股价差/滑点: 0.1% (中小板默认, 蓝筹可改 0.0005)
+        exclusive_orders=True,
+    )
+    print("\n=== running backtest ===")
+    stats = bt.run()
+    print(stats)
+
+    out = OUTPUT_DIR / "backtest_yyt.html"
+    bt.plot(filename=str(out), open_browser=False)
+    print(f"\n✓ equity curve + trades chart → {out}")
+
+
+if __name__ == "__main__":
+    main()

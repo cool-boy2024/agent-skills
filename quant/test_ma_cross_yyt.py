@@ -381,3 +381,54 @@ def test_adjust_passed_to_ak_call(monkeypatch, tmp_path):
     finally:
         monkeypatch.delenv("ADJUST", raising=False)
         importlib.reload(ma_cross_yyt)
+
+
+# ---- CLI ----
+
+def test_cli_parses_defaults():
+    """CLI 无参数时, 走脚本顶部常量默认值 (002183/20200101/20260605)"""
+    import sys
+    from ma_cross_yyt import _parse_args
+    saved_argv = sys.argv
+    try:
+        sys.argv = ["ma_cross_yyt.py"]
+        args = _parse_args()
+        assert args.symbol == "002183"
+        assert args.start == "20200101"
+        assert args.end == "20260605"
+        assert args.cash == 100_000
+        assert args.spread == 0.001
+        assert args.adjust == "qfq"
+        assert args.skip_st_check is False
+        assert args.limit_pct == 0.10
+    finally:
+        sys.argv = saved_argv
+
+
+def test_cli_overrides():
+    """CLI 传参应覆盖默认值"""
+    import sys
+    from ma_cross_yyt import _parse_args
+    saved_argv = sys.argv
+    try:
+        sys.argv = [
+            "ma_cross_yyt.py",
+            "--symbol", "600519",
+            "--start", "20180101",
+            "--end", "20260605",
+            "--cash", "500000",
+            "--spread", "0.0005",
+            "--adjust", "hfq",
+            "--skip-st-check",
+            "--limit-pct", "0.20",
+        ]
+        args = _parse_args()
+        assert args.symbol == "600519"
+        assert args.start == "20180101"
+        assert args.cash == 500_000
+        assert args.spread == 0.0005
+        assert args.adjust == "hfq"
+        assert args.skip_st_check is True
+        assert args.limit_pct == 0.20
+    finally:
+        sys.argv = saved_argv
