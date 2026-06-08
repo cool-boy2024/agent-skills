@@ -317,3 +317,67 @@ def test_spread_env_override(monkeypatch):
         importlib.reload(ma_cross_yyt)  # 恢复
         # 验证恢复成功
         assert ma_cross_yyt.SPREAD == 0.001
+
+
+# ---- TODO #5: 复权方式 (ADJUST) ----
+
+def test_adjust_default_is_qfq():
+    """默认 ADJUST = 'qfq' (前复权, 跟看盘软件一致)"""
+    assert ma_cross_yyt.ADJUST == "qfq", f"默认 ADJUST 应 'qfq', 实际 {ma_cross_yyt.ADJUST!r}"
+
+
+def test_adjust_env_override_to_hfq(monkeypatch):
+    """env ADJUST=hfq → ADJUST = 'hfq' (后复权, 跨标的横向比较)"""
+    monkeypatch.setenv("ADJUST", "hfq")
+    import importlib
+    importlib.reload(ma_cross_yyt)
+    try:
+        assert ma_cross_yyt.ADJUST == "hfq", f"env 覆盖应 'hfq', 实际 {ma_cross_yyt.ADJUST!r}"
+    finally:
+        monkeypatch.delenv("ADJUST", raising=False)
+        importlib.reload(ma_cross_yyt)
+        assert ma_cross_yyt.ADJUST == "qfq"  # 恢复
+
+
+def test_adjust_env_none_means_no_adjust(monkeypatch):
+    """env ADJUST=none → ADJUST = None (不复权, 原始价格)"""
+    for val in ("none", "None", "NONE", "raw", ""):
+        monkeypatch.setenv("ADJUST", val)
+        import importlib
+        importlib.reload(ma_cross_yyt)
+        assert ma_cross_yyt.ADJUST is None, f"ADJUST={val!r} 应 → None, 实际 {ma_cross_yyt.ADJUST!r}"
+    monkeypatch.delenv("ADJUST", raising=False)
+    importlib.reload(ma_cross_yyt)
+
+
+def test_adjust_passed_to_ak_call(monkeypatch, tmp_path):
+    """fetch_data 应把 ADJUST 透传给 ak.stock_zh_a_hist_tx。
+    清空 cache 强制走网络分支, mock ak 调用, assert_called_with 验证。
+    """
+    monkeypatch.setenv("ADJUST", "hfq")
+    import importlib
+    importlib.reload(ma_cross_yyt)
+    try:
+        # 把 CACHE 指到不存在路径, 强制走网络
+        monkeypatch.setattr(ma_cross_yyt, "CACHE", tmp_path / "missing.csv")
+        # mock ak 返回标准 qfq 列结构
+        fake_df = pd.DataFrame({
+            "date": pd.bdate_range("2024-01-01", periods=5),
+            "open": [10.0, 10.1, 10.2, 10.3, 10.4],
+            "close": [10.05, 10.15, 10.25, 10.35, 10.45],
+            "high": [10.1, 10.2, 10.3, 10.4, 10.5],
+            "low": [10.0, 10.1, 10.2, 10.3, 10.4],
+            "amount": [1e6] * 5,
+        })
+        with patch.object(ma_cross_yyt.ak, "stock_zh_a_hist_tx", return_value=fake_df) as ak_mock:
+            with patch.object(ma_cross_yyt, "_check_st_status", lambda symbol: None):
+                ma_cross_yyt.fetch_data()
+        # 断言: ak 被调用, 且 adjust="hfq" 被传入
+        ak_mock.assert_called_once()
+        call_kwargs = ak_mock.call_args.kwargs
+        assert call_kwargs.get("adjust") == "hfq", (
+            f"ak.stock_zh_a_hist_tx 应收到 adjust='hfq', 实际 {call_kwargs.get('adjust')!r}"
+        )
+    finally:
+        monkeypatch.delenv("ADJUST", raising=False)
+        importlib.reload(ma_cross_yyt)

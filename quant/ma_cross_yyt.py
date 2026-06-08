@@ -26,9 +26,10 @@
 #     含 ST/*ST 立即 raise, 提示用户改 SmaCross.limit_pct=0.05
 #   - 滑点: backtesting.py 0.6.x 无 slippage, 用 spread=SPREAD (默认 0.001=10bp)
 #     建模 bid-ask 价差 = 双向滑点; 可 env SPREAD 覆盖 (蓝筹 0.0005, ST 0.002)
+#   - 复权方式: ADJUST 默认 "qfq" (前复权, 跟看盘软件一致), env ADJUST=hfq
+#     切后复权 (适合跨标的横向比较绝对涨幅), env ADJUST=none 切不复权
 #
-# Known caveats (TODO for the user to learn next):
-#   - 复权方式：当前用前复权 (qfq)，看盘软件同；实盘决策有时用后复权 (hfq)。
+# Known caveats (TODO for the user to learn next):  (全部 FIXED, 见上)
 
 import os
 import sys
@@ -50,6 +51,14 @@ CACHE = DATA_DIR / "yiyatong.csv"
 SYMBOL = "002183"
 START = "20200101"
 END = "20260605"
+
+# 复权方式: "qfq" 前复权 (默认, 跟看盘软件一致, 历史价格按当前股本调整)
+#           "hfq" 后复权 (历史价格不变, 适合多标的横向比较绝对涨幅)
+#           "不复权" None (原始价格, 适合回测分红/配股事件本身)
+# 改用 env: ADJUST=hfq python ma_cross_yyt.py
+ADJUST = os.environ.get("ADJUST", "qfq")
+if ADJUST.lower() in ("none", "null", "raw", ""):
+    ADJUST = None
 
 REQUIRED_COLUMNS = ["Open", "Close", "High", "Low"]
 
@@ -143,7 +152,7 @@ def fetch_data() -> pd.DataFrame:
             symbol=f"sz{SYMBOL}",
             start_date=START,
             end_date=END,
-            adjust="qfq",  # 前复权 — 跟看盘软件一致
+            adjust=ADJUST,  # qfq (前复权) / hfq (后复权) / None (不复权)
         )
         df["date"] = pd.to_datetime(df["date"])
         df = df.set_index("date").sort_index()
