@@ -107,3 +107,24 @@ def test_sma_cross_flat_price_no_trades():
     stats = Backtest(df, ma_cross_yyt.SmaCross, cash=100_000,
                      commission=0.0, exclusive_orders=True).run()
     assert stats["# Trades"] == 0, f"期望 0 笔, 实际 {stats['# Trades']}"
+
+
+def test_sma_cross_t1_settlement():
+    """T+1 验证: 所有平仓的 trade, ExitBar - EntryBar >= 2。
+    即: 今天开的仓, 至少要隔 1 根 bar (1 个交易日) 才能平。
+    急涨急跌曲线, 制造可能同日 buy→sell 的场景, 验证守门生效。
+    """
+    from backtesting import Backtest
+    df = _make_synth_df(120, scenario="slow_rise_then_sharp_fall")
+    stats = Backtest(df, ma_cross_yyt.SmaCross, cash=100_000,
+                     commission=0.0, exclusive_orders=True,
+                     finalize_trades=True).run()
+    trades = stats["_trades"]
+    assert len(trades) >= 1, "至少应有 1 笔 trade (finalize 也会算)"
+    # 关键断言: 每笔 trade 的 ExitBar - EntryBar >= 2
+    # (EntryBar = 买入 bar, ExitBar = 平仓 bar; 差值=持仓 bar 数 + 1)
+    for i, t in trades.iterrows():
+        holding_bars = t["ExitBar"] - t["EntryBar"]
+        assert holding_bars >= 2, (
+            f"trade {i} 持仓 {holding_bars} bars, 违反 T+1 (应 ≥ 2)"
+        )

@@ -18,11 +18,10 @@
 # Known caveats (FIXED):
 #   - A 股非对称佣金：买 0.025% (单边), 卖 0.076% (佣金 + 印花税 0.05% + 过户费 0.001%)
 #   - Cache 列校验：cache 加载时检查 Open/Close/High/Low 齐全
+#   - T+1 结算：next() 顶部加 entry_bar 守门 (backtesting.py 默认 next-bar
+#     成交已是 1 bar = 1 个交易日的延迟, 守门是显式保险 + 防 trade_on_close=True 改坏)
 #
 # Known caveats (TODO for the user to learn next):
-#   - T+1 结算：当前脚本允许同日买卖，A 股规则 T+1 (今天买的明天才能卖)
-#     Fix idea: 在 next() 顶部加 `if self.position and bar == entry_bar: return`，
-#     或用 backtesting.py 的 trade_on_close=False + 强制 next bar 处理。
 #   - 涨跌停：当前一字板按收盘成交，得到虚假"完美成交"。
 #     Fix idea: 监控 High==Low 且 |change|/prev_close ≈ 0.10 时跳过该 bar。
 #   - ST/*ST 识别：当前无法迁移到带 ST 的标的。
@@ -80,12 +79,19 @@ class SmaCross(Strategy):
         close = pd.Series(self.data.Close)
         self.sma1 = self.I(lambda: close.rolling(self.n1).mean(), name="SMA5")
         self.sma2 = self.I(lambda: close.rolling(self.n2).mean(), name="SMA20")
+        # T+1 守门: 记录上次开仓的 bar index
+        # (backtesting.py 0.6.x 的 Position 对象没有 entry_bar, 自己存)
+        self._entry_bar = -1
 
     def next(self):
-        # TODO(T+1): A 股不允许同日买卖。今天买的要 next bar 才能卖。
-        # 当前 next() 在同一天就可能 buy → sell, 实际 T+1 会让信号延迟一天。
+        # T+1 守门: A 股不允许同日买卖。今天买的要 next bar 才能卖。
+        # backtesting.py 默认 trade_on_next_bar_open 已经是 1 bar = 1 个交易日
+        # 的延迟, 但加这个显式守门让代码自证, 防谁手贱改成 trade_on_close=True。
+        if self.position and len(self.data) - 1 == self._entry_bar:
+            return  # 当天开的仓, 等明天才能平
         if crossover(self.sma1, self.sma2):
             self.buy()
+            self._entry_bar = len(self.data) - 1  # 记录开仓 bar
         elif crossover(self.sma2, self.sma1):
             self.sell()
 
