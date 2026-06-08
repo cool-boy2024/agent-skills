@@ -261,6 +261,16 @@ def _parse_args():
                    help="跳过 ST/*ST 校验 (跑 ST 标的 + 已手动设 limit_pct=0.05 时用)")
     p.add_argument("--limit-pct", type=float, default=0.10,
                    help="涨跌停幅度: 主板 0.10, 创业板/科创板 0.20, ST 0.05")
+    p.add_argument("--optimize", action="store_true",
+                   help="参数优化模式: 扫 n1/n2 网格找最优 SMA 窗口")
+    p.add_argument("--optimize-n1", default="3,5,8,10,13,15,20",
+                   help="快线 n1 候选值 (逗号分隔, 仅 --optimize 模式生效)")
+    p.add_argument("--optimize-n2", default="10,20,30,50,60,100",
+                   help="慢线 n2 候选值 (逗号分隔, 仅 --optimize 模式生效)")
+    p.add_argument("--optimize-metric", default="Sharpe Ratio",
+                   help="优化目标: 'Return [%%]' / 'Sharpe Ratio' / 'Calmar Ratio' / 'Sortino Ratio'")
+    p.add_argument("--optimize-top", type=int, default=5,
+                   help="打印并输出 top N 个参数组合 (仅 --optimize 模式)")
     return p.parse_args()
 
 
@@ -293,7 +303,14 @@ def main():
     print(f"   latest close: {df['Close'].iloc[-1]:.2f}")
     print(f"   symbol={SYMBOL} adjust={ADJUST} spread={args.spread} limit_pct={args.limit_pct}")
 
-    run_backtest(df, cash=args.cash, spread=args.spread)
+    if args.optimize:
+        n1_grid = [int(x) for x in args.optimize_n1.split(",")]
+        n2_grid = [int(x) for x in args.optimize_n2.split(",")]
+        run_optimize(df, n1_grid=n1_grid, n2_grid=n2_grid,
+                     metric=args.optimize_metric, top_n=args.optimize_top,
+                     cash=args.cash, spread=args.spread)
+    else:
+        run_backtest(df, cash=args.cash, spread=args.spread)
 
 
 def run_backtest(df: pd.DataFrame, cash: float = 100_000, spread: float = SPREAD) -> None:
@@ -313,6 +330,75 @@ def run_backtest(df: pd.DataFrame, cash: float = 100_000, spread: float = SPREAD
     out = OUTPUT_DIR / "backtest_yyt.html"
     bt.plot(filename=str(out), open_browser=False)
     print(f"\n✓ equity curve + trades chart → {out}")
+
+
+def run_optimize(df: pd.DataFrame, n1_grid: list, n2_grid: list,
+                 metric: str = "Sharpe Ratio", top_n: int = 5,
+                 cash: float = 100_000, spread: float = SPREAD) -> None:
+    """参数优化: 扫 n1/n2 网格, 按 metric 排序, 输出 top N + heatmap。
+
+    ⚠ 过拟合警告: 优化出来的 best params 是对**这段历史数据**最优, 不代表
+    未来也会最优。新手最常见的错: 用全样本 in-sample 优化然后实盘就崩。
+    学术做法: 留 20-30% out-of-sample, 只在 in-sample 上优化, out-sample 验证。
+    本脚本只演示 API, 不做样本分割, 实盘前你自己 train/test split。
+
+    Args:
+        n1_grid: 快线候选 (e.g. [3, 5, 8, 10])
+        n2_grid: 慢线候选 (e.g. [10, 20, 30, 60])
+        metric: 优化目标 (stats 里的 key, e.g. 'Sharpe Ratio')
+        top_n: 打印前 N 名
+    """
+    # 约束: n1 必须 < n2 (否则没有 crossover 信号)
+    valid_pairs = [(n1, n2) for n1 in n1_grid for n2 in n2_grid if n1 < n2]
+    if not valid_pairs:
+        raise ValueError(
+            f"无有效 (n1, n2) 组合: n1_grid={n1_grid}, n2_grid={n2_grid}. "
+            f"必须有 n1 < n2 的组合。"
+        )
+    print(f"\n=== running optimize ===")
+    print(f"   n1 candidates: {n1_grid}")
+    print(f"   n2 candidates: {n2_grid}")
+    print(f"   valid pairs (n1 < n2): {len(valid_pairs)}")
+    print(f"   metric: {metric}")
+
+    bt = Backtest(
+        df, SmaCross,
+        cash=cash,
+        commission=a_share_commission,
+        spread=spread,
+        exclusive_orders=True,
+    )
+    opt_stats, heatmap = bt.optimize(
+        n1=n1_grid,
+        n2=n2_grid,
+        constraint=lambda p: p.n1 < p.n2,  # 显式守门
+        maximize=metric,
+        return_heatmap=True,
+    )
+    # opt_stats 是 best run, heatmap 是 (n1, n2) -> metric 的 DataFrame
+    print(f"\n=== best params ({metric}={opt_stats[metric]:.4f}) ===")
+    print(f"   n1={opt_stats._strategy.n1}, n2={opt_stats._strategy.n2}")
+    print(f"   Return: {opt_stats['Return [%]']:.2f}%, "
+          f"Max DD: {opt_stats['Max. Drawdown [%]']:.2f}%, "
+          f"# Trades: {opt_stats['# Trades']}")
+    print(f"   Buy & Hold: {opt_stats['Buy & Hold Return [%]']:.2f}%")
+
+    # Top N (按 metric 排序, 取 n1/n2/Return/Sharpe/MaxDD)
+    print(f"\n=== top {top_n} (n1, n2) by {metric} ===")
+    flat = heatmap.reset_index()
+    flat.columns = list(flat.columns[:-1]) + ["metric_value"]
+    flat = flat.dropna(subset=["metric_value"])  # 去掉 NaN 行 (数据不够的窗口)
+    flat = flat.sort_values("metric_value", ascending=False).head(top_n)
+    for _, row in flat.iterrows():
+        n1, n2 = int(row["n1"]), int(row["n2"])
+        print(f"   n1={n1:3d} n2={n2:3d}  {metric}={row['metric_value']:.4f}")
+
+    # Heatmap HTML: unstack Series→DataFrame (n1 行, n2 列)
+    out = OUTPUT_DIR / f"optimize_heatmap_{SYMBOL}_{metric.replace(' ', '_')}.html"
+    heatmap_2d = heatmap.unstack(level="n2")  # 行=n1, 列=n2
+    heatmap_2d.to_html(out)
+    print(f"\n✓ heatmap (n1×n2 grid) → {out}")
+    print(f"  (打开 HTML 看哪些窗口组合稳定, 而不是只看 top 1 — 避免过拟合单点)")
 
 
 if __name__ == "__main__":

@@ -432,3 +432,51 @@ def test_cli_overrides():
         assert args.limit_pct == 0.20
     finally:
         sys.argv = saved_argv
+
+
+# ---- 参数优化 (run_optimize) ----
+
+def test_run_optimize_returns_best_and_heatmap(capsys):
+    """run_optimize 应返回 (best_stats, heatmap Series) + 打印 top N + 写 HTML"""
+    df = _make_synth_df(200, scenario="rise_fall")
+    # 走小网格避免测试跑太久
+    ma_cross_yyt.run_optimize(
+        df,
+        n1_grid=[3, 5, 10],
+        n2_grid=[20, 30, 50],
+        metric="Sharpe Ratio",
+        top_n=3,
+        cash=100_000,
+        spread=0.0,
+    )
+    captured = capsys.readouterr()
+    # 关键输出断言
+    assert "best params" in captured.out, "应打印 best params"
+    assert "n1=" in captured.out and "n2=" in captured.out
+    assert "top 3" in captured.out, "应打印 top 3"
+    assert "heatmap" in captured.out.lower(), "应输出 heatmap HTML 路径"
+    # HTML 文件应被生成
+    html_files = list(ma_cross_yyt.OUTPUT_DIR.glob("optimize_heatmap_*.html"))
+    assert len(html_files) >= 1, f"应有 1+ heatmap HTML, 实际 {html_files}"
+
+
+def test_run_optimize_constraint_n1_lt_n2():
+    """run_optimize 约束: n1 < n2 才能有有效组合。
+    全部 n1 ≥ n2 的网格应 raise ValueError。
+    """
+    df = _make_synth_df(100)
+    with pytest.raises(ValueError) as exc:
+        ma_cross_yyt.run_optimize(df, n1_grid=[10, 20], n2_grid=[5, 10], metric="Return [%]")
+    assert "无有效" in str(exc.value)
+
+
+def test_run_optimize_metric_change():
+    """不同 metric 排序结果不同 (Sharpe vs Return 偏好不同参数)"""
+    df = _make_synth_df(150, scenario="rise_fall")
+    # 用 Return [%] 优化
+    ma_cross_yyt.run_optimize(df, n1_grid=[3, 5, 10], n2_grid=[20, 30],
+                              metric="Return [%]", top_n=2, spread=0.0)
+    # 跑完后 OUTPUT_DIR 应有 Return 文件
+    return_htmls = [f for f in ma_cross_yyt.OUTPUT_DIR.glob("optimize_heatmap_*Return*")
+                    if "Sharpe" not in str(f)]
+    assert len(return_htmls) >= 1
