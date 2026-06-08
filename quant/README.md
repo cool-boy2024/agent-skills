@@ -103,6 +103,35 @@ python cross_sma_btc.py --symbol DOGE/USDT --spread 0.005
 | 数据源 | akshare (东方财富/腾讯) | ccxt (Gate.io/Binance/OKX) |
 | 历史数据 | 20+ 年 (2000 起) | ~10 年 (BTC 2017 起) |
 
+## 参数优化 (A 股)
+
+```bash
+# 默认: 跑 n1 in [3,5,8,10,13,15,20], n2 in [10,20,30,50,60,100] 网格, 按 Sharpe 排序
+python ma_cross_yyt.py --optimize
+
+# 自定义网格 + Return 目标
+python ma_cross_yyt.py --optimize \
+  --optimize-n1 "5,10,15,20" \
+  --optimize-n2 "30,50,60" \
+  --optimize-metric "Return [%]" \
+  --optimize-top 10
+
+# 优化目标可选: 'Return [%]' / 'Sharpe Ratio' / 'Calmar Ratio' / 'Sortino Ratio'
+```
+
+输出:
+- best params (n1, n2) + 该参数下完整 stats
+- top N (按 metric 排序)
+- heatmap HTML (n1 × n2 网格, 颜色深浅表 metric 高低) → `output/optimize_heatmap_*.html`
+
+**⚠ 过拟合警告**: 优化结果是 **in-sample** 历史最优, **不代表未来会最优**。
+学术做法: 70% 训练 + 30% out-of-sample 验证。本脚本只演示 API,
+实盘前你自己 train/test split。
+
+实测 (002183 怡亚通, 2020-2026): best = `n1=10, n2=30`, Sharpe=0.4535,
+Return=+301.88% (vs buy&hold +79.28%) — 显著优于默认 5/20。怡亚通震荡市
+5/20 太敏感假信号多, 10/30 更稳。
+
 ## 环境变量
 
 | 变量 | 默认值 | 含义 |
