@@ -1,35 +1,40 @@
 # quant/
 
-A 股量化实验 / 学习目录。回测脚本 + 单元测试。
+A 股 + Crypto 量化实验 / 学习目录。回测脚本 + 单元测试。
 
-**目标用户**: 量化新手 + A 股学习者。脚本里的每个 `TODO` / 边界条件
-都对应 A 股实盘的某个真实坑，header 注释解释了为什么这么写。
+**目标用户**: 量化新手 + A 股/币圈学习者。脚本里的每个 `TODO` /
+边界条件都对应实盘的某个真实坑，header 注释解释了为什么这么写。
 
 ## 目录结构
 
 ```
 quant/
-├── README.md             ← 你正在看
-├── ma_cross_yyt.py       ← 5/20 SMA 金叉死叉回测 (A 股版)
-├── test_ma_cross_yyt.py  ← pytest 单元测试 (26 个)
-├── .gitignore            ← data/ output/ 不入库
-├── data/                 ← K线缓存 (gitignored, 重跑自动生成)
-└── output/               ← 回测图表 (gitignored, 重跑自动生成)
+├── README.md                 ← 你正在看
+├── ma_cross_yyt.py           ← 5/20 SMA 金叉死叉 (A 股版, 26 个测试)
+├── test_ma_cross_yyt.py
+├── cross_sma_btc.py          ← 5/20 SMA 金叉死叉 (Crypto 版, 9 个测试)
+├── test_cross_sma_btc.py
+├── .gitignore                ← data/ output/ 不入库
+├── data/                     ← K线缓存 (gitignored, 重跑自动生成)
+└── output/                   ← 回测图表 (gitignored, 重跑自动生成)
 ```
 
 ## 快速开始
 
 ```bash
-# 一次性: 创建 venv + 装依赖 (macOS 系统 Python LibreSSL 跟 akshare 不兼容)
+# 一次性: 创建 venv + 装依赖
 python3 -m venv ~/quant-venv
-~/quant-venv/bin/pip install akshare pandas backtesting pytest
+~/quant-venv/bin/pip install akshare pandas backtesting ccxt pytest
 
-# 跑默认回测 (002183 怡亚通, 2020-01-01 → 2026-06-05, 前复权)
+# 跑 A 股默认回测 (002183 怡亚通, 2020-2026, 前复权)
 cd /Users/a1111/Project/Hackathons/quant
 ~/quant-venv/bin/python ma_cross_yyt.py
 
-# 跑测试
-~/quant-venv/bin/python -m pytest test_ma_cross_yyt.py -v
+# 跑 BTC/USDT 默认回测 (Gate.io 拉数据, 2020-2026, 1d)
+~/quant-venv/bin/python cross_sma_btc.py
+
+# 跑全部测试 (35 个: 26 A 股 + 9 crypto)
+~/quant-venv/bin/python -m pytest -v
 ```
 
 ## CLI 例子
@@ -62,6 +67,53 @@ python ma_cross_yyt.py --help
 | `ADJUST` | `qfq` | 复权方式: `qfq` 前复权 / `hfq` 后复权 / `none` 不复权 |
 
 CLI 参数 (`--spread` / `--adjust`) 优先级高于环境变量。
+
+## CLI 例子 (Crypto)
+
+```bash
+# 默认: BTC/USDT 日线 from Gate.io
+python cross_sma_btc.py
+
+# ETH/USDT
+python cross_sma_btc.py --symbol ETH/USDT
+
+# 4 小时线
+python cross_sma_btc.py --timeframe 4h
+
+# Bybit 拉数据 (如果 Gate.io 挂了)
+python cross_sma_btc.py --exchange bybit
+
+# 山寨币滑点加大
+python cross_sma_btc.py --symbol SOL/USDT --spread 0.001
+
+# MEME 币滑点 0.5% (流动性差)
+python cross_sma_btc.py --symbol DOGE/USDT --spread 0.005
+```
+
+**Crypto vs A 股 trade rules 差异**:
+
+| 维度 | A 股 (ma_cross_yyt) | Crypto (cross_sma_btc) |
+|------|---------------------|------------------------|
+| 交易时间 | 工作日 9:30-15:00 | 24/7 连续 |
+| 结算 | T+1 | T+0 |
+| 涨跌停 | ±10% / ±20% / ±5% | 无 |
+| ST/*ST | 需跳过 | 无 |
+| 佣金 | 0.025% 买 / 0.076% 卖 | 0.1% 对称 |
+| 价差默认 | 0.1% (中小板) | 0.05% (BTC 主流) |
+| 数据源 | akshare (东方财富/腾讯) | ccxt (Gate.io/Binance/OKX) |
+| 历史数据 | 20+ 年 (2000 起) | ~10 年 (BTC 2017 起) |
+
+## 环境变量
+
+| 变量 | 默认值 | 含义 |
+|------|--------|------|
+| `SPREAD` | A 股 `0.001`, Crypto `0.0005` | bid-ask 价差 (滑点建模) |
+| `ADJUST` | `qfq` (A 股) | 复权方式: `qfq` / `hfq` / `none` |
+| `EXCHANGE` | `gate` (Crypto) | ccxt 交易所: `gate` / `binance` / `okx` / `bybit` |
+| `SYMBOL` | `BTC/USDT` (Crypto) | 交易对 |
+| `TIMEFRAME` | `1d` (Crypto) | K线周期: `1m` / `5m` / `1h` / `4h` / `1d` / `1w` |
+
+CLI 参数 (`--spread` / `--adjust` / `--exchange` / `--symbol` / `--timeframe`) 优先级高于环境变量。
 
 ## A 股实盘 handled 了的坑
 
