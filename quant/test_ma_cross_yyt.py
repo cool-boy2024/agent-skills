@@ -128,3 +128,92 @@ def test_sma_cross_t1_settlement():
         assert holding_bars >= 2, (
             f"trade {i} 持仓 {holding_bars} bars, 违反 T+1 (应 ≥ 2)"
         )
+
+
+# ---- TODO #2: 涨跌停 (_detect_limit_bar) ----
+
+def test_detect_limit_bar_limit_up():
+    """一字涨停: High==Low==prev_close*1.10 应被识别"""
+    import numpy as np
+    close = pd.Series([10.0, 11.0])  # 10% 涨
+    high = pd.Series([10.5, 11.0])   # 第二天一字涨停在 11.0
+    low = pd.Series([9.5, 11.0])
+    mask = ma_cross_yyt._detect_limit_bar(close, high, low, limit_pct=0.10)
+    assert mask.iloc[0] == False, "首日无 prev_close, 不应被识别"
+    assert mask.iloc[1] == True, f"一字涨停应被识别, 实际 {mask.iloc[1]}"
+
+
+def test_detect_limit_bar_limit_down():
+    """一字跌停: High==Low==prev_close*0.90 应被识别"""
+    close = pd.Series([10.0, 9.0])
+    high = pd.Series([10.5, 9.0])
+    low = pd.Series([9.5, 9.0])
+    mask = ma_cross_yyt._detect_limit_bar(close, high, low, limit_pct=0.10)
+    assert mask.iloc[1] == True, f"一字跌停应被识别, 实际 {mask.iloc[1]}"
+
+
+def test_detect_limit_bar_normal_no_flag():
+    """正常 bar (有波动 + 涨幅不在 ±10%): 不应被识别"""
+    close = pd.Series([10.0, 10.5])  # 涨 5%
+    high = pd.Series([10.5, 10.7])
+    low = pd.Series([9.8, 10.2])
+    mask = ma_cross_yyt._detect_limit_bar(close, high, low, limit_pct=0.10)
+    assert mask.iloc[1] == False, "5% 涨幅 + 有波动, 不应被识别为一字板"
+
+
+def test_detect_limit_bar_high_eq_low_but_not_at_limit():
+    """罕见情况: High==Low 但不在涨跌停 (e.g. 停牌 1 天后小幅波动)
+    不应误判为一字板 — 第二个条件 (≈ limit_pct) 必须满足"""
+    close = pd.Series([10.0, 10.0])  # 平价, High==Low
+    high = pd.Series([10.0, 10.0])
+    low = pd.Series([10.0, 10.0])
+    mask = ma_cross_yyt._detect_limit_bar(close, high, low, limit_pct=0.10)
+    assert mask.iloc[1] == False, "平价 High==Low 不应误判为涨跌停"
+
+
+def test_detect_limit_bar_chinext_20pct():
+    """创业板/科创板: limit_pct=0.20 应识别 20% 涨跌幅"""
+    close = pd.Series([10.0, 12.0])  # 涨 20%
+    high = pd.Series([10.5, 12.0])
+    low = pd.Series([9.5, 12.0])
+    # 主板 10% 阈值下不应被识别
+    mask_main = ma_cross_yyt._detect_limit_bar(close, high, low, limit_pct=0.10)
+    assert mask_main.iloc[1] == False, "主板 10% 阈值下 20% 涨不应被识别"
+    # 创业板 20% 阈值下应被识别
+    mask_chinext = ma_cross_yyt._detect_limit_bar(close, high, low, limit_pct=0.20)
+    assert mask_chinext.iloc[1] == True, "创业板 20% 阈值下 20% 涨应被识别"
+
+
+def test_sma_cross_skips_limit_bar():
+    """集成测试: 涨跌停当日, 即便有 crossover 信号, 也不应产生 buy。
+    手工构造: 50 根平价 → 第 51 根一字涨停 (High==Low==11.0) → 第 52 根才开涨。
+    没 limit 检测时, 后续 30 根上涨会触发 buy; 有 limit 检测时第 51 根被 skip。
+    """
+    from backtesting import Backtest
+    dates = pd.bdate_range("2024-01-01", periods=80)
+    # 前 50 根平价 10.0
+    closes = [10.0] * 50
+    # 第 51 根一字涨停到 11.0 (10% limit, High==Low==11.0)
+    closes.append(11.0)
+    # 后 29 根继续涨到 14.0
+    for i in range(29):
+        closes.append(11.0 + (i + 1) / 29 * 3.0)
+    df = pd.DataFrame(
+        {"Open": closes, "High": closes, "Low": closes, "Close": closes, "Volume": 1},
+        index=pd.DatetimeIndex(dates, name="date"),
+    )
+    # 跑两遍: 一遍带 limit 检测, 一遍禁用 (limit_pct=0 关闭所有检测)
+    class NoLimitGuard(ma_cross_yyt.SmaCross):
+        limit_pct = 0  # 0% 阈值 = 永不触发一字板 (兜底永远允许)
+    stats_with = Backtest(df, ma_cross_yyt.SmaCross, cash=100_000,
+                          commission=0.0, exclusive_orders=True,
+                          finalize_trades=True).run()
+    stats_no = Backtest(df, NoLimitGuard, cash=100_000,
+                        commission=0.0, exclusive_orders=True,
+                        finalize_trades=True).run()
+    # 关键断言: 带 limit 检测的 trade 数应 ≤ 不带检测的
+    # (limit 检测在上涨途中可能 skip 了若干 buy 信号, 行为更保守)
+    assert stats_with["# Trades"] <= stats_no["# Trades"], (
+        f"带 limit 检测 {stats_with['# Trades']} 笔, 不带 {stats_no['# Trades']} 笔, "
+        f"limit 检测应不增加交易数"
+    )

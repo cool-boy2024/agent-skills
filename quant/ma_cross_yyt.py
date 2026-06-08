@@ -20,10 +20,10 @@
 #   - Cache 列校验：cache 加载时检查 Open/Close/High/Low 齐全
 #   - T+1 结算：next() 顶部加 entry_bar 守门 (backtesting.py 默认 next-bar
 #     成交已是 1 bar = 1 个交易日的延迟, 守门是显式保险 + 防 trade_on_close=True 改坏)
+#   - 涨跌停：一字板 (High==Low 且 |change|/prev_close ≈ limit_pct) 当日
+#     跳过信号, 避免一字板次日开盘价 ≠ 今日收盘价导致的 fake-perfect-fill
 #
 # Known caveats (TODO for the user to learn next):
-#   - 涨跌停：当前一字板按收盘成交，得到虚假"完美成交"。
-#     Fix idea: 监控 High==Low 且 |change|/prev_close ≈ 0.10 时跳过该 bar。
 #   - ST/*ST 识别：当前无法迁移到带 ST 的标的。
 #     Fix idea: 调 `ak.stock_info_a_code_name()` 拿股票名称，assert 不含 ST/*ST。
 #   - 滑点：当前假设 next bar open 完美成交。
@@ -68,10 +68,28 @@ def a_share_commission(size, price):
         return gross * 0.00076
 
 
+def _detect_limit_bar(close, high, low, limit_pct, tolerance=0.005):
+    """检测一字板 (涨跌停封板) bar。
+
+    判定条件 (2 个必须同时满足):
+    1. High == Low (全日成交价 = 同一价, 没有波动)
+    2. |当日 change| / prev_close ≈ limit_pct (幅度到涨跌停)
+       tolerance=0.005 (0.5%) 容许小幅计算误差 (复权 / 真实幅度 9.97% 等)
+
+    返回: pd.Series[bool]，True 表示该 bar 是一字板。
+    """
+    prev_close = close.shift(1)
+    change = (close - prev_close) / prev_close
+    at_limit = (change.abs() - limit_pct).abs() < tolerance
+    no_range = (high == low)
+    return (at_limit & no_range).fillna(False)
+
+
 class SmaCross(Strategy):
     """经典 5/20 SMA 金叉死叉策略。"""
-    n1 = 5    # 快线周期
-    n2 = 20   # 慢线周期
+    n1 = 5              # 快线周期
+    n2 = 20             # 慢线周期
+    limit_pct = 0.10    # 涨跌停幅度 (主板 10%, 创业板/科创板 20%, ST 5%)
 
     def init(self):
         # self.data.Close 是 backtesting.py 的 _Array (numpy view)，
@@ -82,6 +100,13 @@ class SmaCross(Strategy):
         # T+1 守门: 记录上次开仓的 bar index
         # (backtesting.py 0.6.x 的 Position 对象没有 entry_bar, 自己存)
         self._entry_bar = -1
+        # 涨跌停 (一字板) 检测: High==Low 且 |change|/prev_close ≈ limit_pct
+        # 一字板日是 fake-perfect-fill 重灾区 — backtesting.py 默认假设
+        # next open = today close, 但一字板次日往往一字开盘 (≠ 今日 close)
+        self._is_limit = self.I(
+            lambda: _detect_limit_bar(close, self.data.High, self.data.Low, self.limit_pct),
+            name=f"LimitBar({self.limit_pct:.0%})",
+        )
 
     def next(self):
         # T+1 守门: A 股不允许同日买卖。今天买的要 next bar 才能卖。
@@ -89,6 +114,9 @@ class SmaCross(Strategy):
         # 的延迟, 但加这个显式守门让代码自证, 防谁手贱改成 trade_on_close=True。
         if self.position and len(self.data) - 1 == self._entry_bar:
             return  # 当天开的仓, 等明天才能平
+        # 涨跌停守门: 今天一字板 (High==Low 且涨幅 ≈ limit_pct), 不能成交
+        if self._is_limit[-1]:
+            return
         if crossover(self.sma1, self.sma2):
             self.buy()
             self._entry_bar = len(self.data) - 1  # 记录开仓 bar
