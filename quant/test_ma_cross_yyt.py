@@ -275,3 +275,45 @@ def test_check_st_status_symbol_not_found_warns(monkeypatch, capsys):
     ma_cross_yyt._check_st_status("002183")  # 不在 fake 表里
     captured = capsys.readouterr()
     assert "ST 检查跳过" in captured.err
+
+
+# ---- TODO #4: 滑点 (spread) ----
+
+def test_spread_increases_costs():
+    """滑点: spread 越大, 收益越低 (因为买卖价差扣钱)。
+    同一数据, 跑两个 spread 值对比。
+    """
+    from backtesting import Backtest
+    df = _make_synth_df(100, scenario="rise_fall")
+    stats_no = Backtest(df, ma_cross_yyt.SmaCross, cash=100_000,
+                        commission=0.0, spread=0.0,
+                        exclusive_orders=True, finalize_trades=True).run()
+    stats_with = Backtest(df, ma_cross_yyt.SmaCross, cash=100_000,
+                          commission=0.0, spread=0.01,  # 1% spread (故意大, 显式看出效果)
+                          exclusive_orders=True, finalize_trades=True).run()
+    # 有 spread 的 final equity 应 ≤ 无 spread 的 (滑点扣钱)
+    assert stats_with["Equity Final [$]"] <= stats_no["Equity Final [$]"], (
+        f"有 spread {stats_with['Equity Final [$]']:.2f} 不应高于无 spread {stats_no['Equity Final [$]']:.2f}"
+    )
+
+
+def test_spread_default_is_one_bp_for_midcap():
+    """默认 SPREAD = 0.001 (10 bp), 适合中小板 (002xxx) 流动性。
+    蓝筹 (600xxx) 建议 0.0005, ST/低流动性 0.002; 改用 env SPREAD 覆盖。
+    """
+    assert ma_cross_yyt.SPREAD == 0.001, f"默认 SPREAD 应 0.001, 实际 {ma_cross_yyt.SPREAD}"
+
+
+def test_spread_env_override(monkeypatch):
+    """env SPREAD 覆盖默认 (蓝筹调低 / ST 调高)"""
+    monkeypatch.setenv("SPREAD", "0.0005")
+    # 重新 import module 让常量重读
+    import importlib
+    importlib.reload(ma_cross_yyt)
+    try:
+        assert ma_cross_yyt.SPREAD == 0.0005, f"env 覆盖应生效, 实际 {ma_cross_yyt.SPREAD}"
+    finally:
+        monkeypatch.delenv("SPREAD", raising=False)
+        importlib.reload(ma_cross_yyt)  # 恢复
+        # 验证恢复成功
+        assert ma_cross_yyt.SPREAD == 0.001

@@ -24,12 +24,13 @@
 #     跳过信号, 避免一字板次日开盘价 ≠ 今日收盘价导致的 fake-perfect-fill
 #   - ST/*ST 识别: fetch_data() 调 ak.stock_info_a_code_name() 校验名称,
 #     含 ST/*ST 立即 raise, 提示用户改 SmaCross.limit_pct=0.05
+#   - 滑点: backtesting.py 0.6.x 无 slippage, 用 spread=SPREAD (默认 0.001=10bp)
+#     建模 bid-ask 价差 = 双向滑点; 可 env SPREAD 覆盖 (蓝筹 0.0005, ST 0.002)
 #
 # Known caveats (TODO for the user to learn next):
-#   - 滑点：当前假设 next bar open 完美成交。
-#     Fix idea: Backtest(..., slippage=...) 或自定义 fill model。
 #   - 复权方式：当前用前复权 (qfq)，看盘软件同；实盘决策有时用后复权 (hfq)。
 
+import os
 import sys
 from pathlib import Path
 
@@ -51,6 +52,13 @@ START = "20200101"
 END = "20260605"
 
 REQUIRED_COLUMNS = ["Open", "Close", "High", "Low"]
+
+# A 股滑点/价差建模: backtesting.py 0.6.x 没有 slippage 参数,
+# 但有 spread (bid-ask 价差) — 买按 ask 价 (price*(1+spread/2)) 成交,
+# 卖按 bid 价 (price*(1-spread/2)) 成交, 等效于双向滑点。
+# 0.1% (10 bp) 适合中小板 (002xxx) 流动性, 蓝筹 (600xxx) 建议 0.0005 (5 bp),
+# ST/低流动性建议 0.002 (20 bp)。可通过环境变量 SPREAD 覆盖。
+SPREAD = float(os.environ.get("SPREAD", "0.001"))
 
 
 def a_share_commission(size, price):
@@ -212,6 +220,7 @@ def run_backtest(df: pd.DataFrame) -> None:
         SmaCross,
         cash=100_000,
         commission=a_share_commission,  # A 股非对称：买 0.025% / 卖 0.076%
+        spread=SPREAD,                   # A 股价差/滑点: 0.1% (中小板默认, 蓝筹可改 0.0005)
         exclusive_orders=True,
     )
     print("\n=== running backtest ===")
