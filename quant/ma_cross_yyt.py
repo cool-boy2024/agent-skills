@@ -22,10 +22,10 @@
 #     成交已是 1 bar = 1 个交易日的延迟, 守门是显式保险 + 防 trade_on_close=True 改坏)
 #   - 涨跌停：一字板 (High==Low 且 |change|/prev_close ≈ limit_pct) 当日
 #     跳过信号, 避免一字板次日开盘价 ≠ 今日收盘价导致的 fake-perfect-fill
+#   - ST/*ST 识别: fetch_data() 调 ak.stock_info_a_code_name() 校验名称,
+#     含 ST/*ST 立即 raise, 提示用户改 SmaCross.limit_pct=0.05
 #
 # Known caveats (TODO for the user to learn next):
-#   - ST/*ST 识别：当前无法迁移到带 ST 的标的。
-#     Fix idea: 调 `ak.stock_info_a_code_name()` 拿股票名称，assert 不含 ST/*ST。
 #   - 滑点：当前假设 next bar open 完美成交。
 #     Fix idea: Backtest(..., slippage=...) 或自定义 fill model。
 #   - 复权方式：当前用前复权 (qfq)，看盘软件同；实盘决策有时用后复权 (hfq)。
@@ -151,7 +151,9 @@ def fetch_data() -> pd.DataFrame:
         df["Volume"] = 1   # 腾讯源无 volume；策略不依赖 volume；新手别被这个 1 误导
         df.to_csv(CACHE)
         print(f"✓ saved {len(df)} rows to {CACHE}")
-    return _validate_columns(df)
+    df = _validate_columns(df)
+    _check_st_status(SYMBOL)  # ST/*ST 标的 limit_pct 应改 0.05, 见函数 docstring
+    return df
 
 
 def _validate_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -163,6 +165,45 @@ def _validate_columns(df: pd.DataFrame) -> pd.DataFrame:
             f"delete {CACHE} and re-run to refetch from source."
         )
     return df
+
+
+def _check_st_status(symbol: str) -> None:
+    """校验股票不含 ST/*ST 标记。
+    ST/*ST 标的涨跌停 ±5% (非 ±10%), 本脚本 SmaCross.limit_pct=0.10 假设
+    会让所有 ±5% 涨跌停都被误判为"一字板"并 skip, 策略会失效。
+    修复: 若确认要跑 ST 标的, 改 SmaCross.limit_pct = 0.05。
+
+    实现: 调 ak.stock_info_a_code_name() 拿全 A 股列表, 按 code 过滤
+    拿 name, 含 ST/*ST 则 raise。
+    """
+    try:
+        info = ak.stock_info_a_code_name()
+    except Exception as e:
+        # akshare 接口偶发不稳, 拿不到名称不阻断回测, 只 warn
+        print(f"⚠ ST 检查跳过 (ak.stock_info_a_code_name 失败: {e})", file=sys.stderr)
+        return
+    if info is None or info.empty:
+        print(f"⚠ ST 检查跳过 (ak 返回空)", file=sys.stderr)
+        return
+    # 兼容不同 akshare 版本: 列名可能是 'code'/'symbol', 'name'/'名称'
+    code_col = next((c for c in info.columns if c.lower() in ("code", "symbol", "代码")), None)
+    name_col = next((c for c in info.columns if c.lower() in ("name", "名称")), None)
+    if not code_col or not name_col:
+        print(f"⚠ ST 检查跳过 (ak 返回列意外: {list(info.columns)})", file=sys.stderr)
+        return
+    matched = info[info[code_col].astype(str).str.contains(str(symbol))]
+    if matched.empty:
+        print(f"⚠ ST 检查跳过 ({symbol} 不在 ak 全 A 股列表)", file=sys.stderr)
+        return
+    name = str(matched[name_col].iloc[0])
+    if "ST" in name.upper():
+        raise ValueError(
+            f"❌ {symbol} 名称含 ST/*ST: '{name}'。\n"
+            f"   ST 标的涨跌停 ±5% (非 ±10%), 本脚本 SmaCross.limit_pct=0.10 会\n"
+            f"   误判所有 ±5% 涨跌停为'一字板'并 skip, 策略失效。\n"
+            f"   修复: 若确认要跑 ST 标的, 改 SmaCross.limit_pct = 0.05 重跑。"
+        )
+    print(f"✓ 股票名称: {name} (非 ST/*ST, 校验通过)")
 
 
 def run_backtest(df: pd.DataFrame) -> None:

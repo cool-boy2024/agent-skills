@@ -217,3 +217,61 @@ def test_sma_cross_skips_limit_bar():
         f"带 limit 检测 {stats_with['# Trades']} 笔, 不带 {stats_no['# Trades']} 笔, "
         f"limit 检测应不增加交易数"
     )
+
+
+# ---- TODO #3: ST/*ST 识别 (_check_st_status) ----
+
+def test_check_st_status_normal_stock_passes(monkeypatch, capsys):
+    """正常股票名 (无 ST): _check_st_status 不抛错 + 打印通过信息"""
+    # akshare 实际 API: stock_info_a_code_name() 无参, 返回全 A 股列表
+    fake_info = pd.DataFrame({"代码": ["002183"], "名称": ["怡亚通"]})
+    monkeypatch.setattr(ma_cross_yyt.ak, "stock_info_a_code_name", lambda: fake_info)
+    ma_cross_yyt._check_st_status("002183")  # 不应抛错
+    captured = capsys.readouterr()
+    assert "怡亚通" in captured.out
+    assert "非 ST" in captured.out
+
+
+def test_check_st_status_st_raises(monkeypatch):
+    """ST 股票: _check_st_status 抛 ValueError + 错误信息含 limit_pct 修复建议"""
+    fake_info = pd.DataFrame({"代码": ["002183"], "名称": ["ST 怡亚通"]})
+    monkeypatch.setattr(ma_cross_yyt.ak, "stock_info_a_code_name", lambda: fake_info)
+    with pytest.raises(ValueError) as exc_info:
+        ma_cross_yyt._check_st_status("002183")
+    msg = str(exc_info.value)
+    assert "ST" in msg
+    assert "limit_pct = 0.05" in msg, f"错误信息应给修复建议, 实际: {msg}"
+
+
+def test_check_st_status_star_st_raises(monkeypatch):
+    """*ST 股票: 同样抛错 (含 ST 即触发)"""
+    fake_info = pd.DataFrame({"代码": ["002183"], "名称": ["*ST 怡亚通"]})
+    monkeypatch.setattr(ma_cross_yyt.ak, "stock_info_a_code_name", lambda: fake_info)
+    with pytest.raises(ValueError):
+        ma_cross_yyt._check_st_status("002183")
+
+
+def test_check_st_status_ak_failure_does_not_block(monkeypatch, capsys):
+    """ak 接口拿不到 (网络/字段变更): 应当 warn 跳过, 不阻断回测"""
+    monkeypatch.setattr(ma_cross_yyt.ak, "stock_info_a_code_name",
+                        lambda: (_ for _ in ()).throw(RuntimeError("ak 字段变了")))
+    ma_cross_yyt._check_st_status("002183")  # 不应抛错
+    captured = capsys.readouterr()
+    assert "ST 检查跳过" in captured.err
+
+
+def test_check_st_status_empty_response_warns(monkeypatch, capsys):
+    """ak 返回空 DataFrame: 应当 warn 跳过"""
+    monkeypatch.setattr(ma_cross_yyt.ak, "stock_info_a_code_name", lambda: pd.DataFrame())
+    ma_cross_yyt._check_st_status("002183")
+    captured = capsys.readouterr()
+    assert "ST 检查跳过" in captured.err
+
+
+def test_check_st_status_symbol_not_found_warns(monkeypatch, capsys):
+    """ak 全表里找不到该 symbol (罕见): warn 跳过, 不阻断"""
+    fake_info = pd.DataFrame({"代码": ["600000"], "名称": ["浦发银行"]})
+    monkeypatch.setattr(ma_cross_yyt.ak, "stock_info_a_code_name", lambda: fake_info)
+    ma_cross_yyt._check_st_status("002183")  # 不在 fake 表里
+    captured = capsys.readouterr()
+    assert "ST 检查跳过" in captured.err
